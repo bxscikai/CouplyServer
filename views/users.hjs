@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{ title }}</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+  </head>
+  <body>
+  	<h1>{{ title }} </h1>
+
+  	<!-- User data -->
+  	  <table style = "width=100%">
+  	  	<col width="200">
+  	  	<col width="200">
+  	  	<col width="200">
+        <col width="200">
+  	  	<tr>
+  	  		<td><b>username</b></td>
+  	  		<td><b>partnerName</b></td>
+  	  		<td><b>pending_partnerName</b></td>
+          <td><b>deviceToken</b></td>
+  	  	<tr/>
+      	{{#users}}
+      	<tr>
+            <td>{{username}}	</td>
+          	<td>{{partnerName}}	</td>
+          	<td>{{pending_partnerName}}	</td>          	
+            <td>{{deviceToken}} </td>                       
+        <tr/>
+        {{/users}}
+      </table>
+
+  </body>
+</html>
