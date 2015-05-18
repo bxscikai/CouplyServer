@@ -1,3 +1,4 @@
+/* global global */
 var express = require('express');
 var mongoose = require('mongoose');
 var util = require(global.appRoot + '/utils.js');
@@ -54,7 +55,7 @@ router.post('/set', function(req, res, next) {
     // Body will look like this
     // senderName=Chenkai&receiverName=Min&emojiId=1&timestamp=1425243022
     // Ensure parameters are not null
-    if (req.body.senderName == null || req.body.receiverName == null || req.body.emojiId == null || req.body.timestamp == null)
+    if (req.body.senderName == null || req.body.receiverName == null || req.body.timestamp == null || req.body.chatType == null)
     {
         res.send({status: constant.status.error, message : constant.messages.chat_set_missingChatParameter});
         return;                
