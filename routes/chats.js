@@ -4,7 +4,7 @@ var mongoose = require('mongoose');
 var util = require(global.appRoot + '/utils.js');
 var router = express.Router();
 var constant = require(global.appRoot + '/constants.js');
-var apn = require('apn');
+var qs = require('querystring');
 
 // Load models
 util.loadModels();
@@ -50,7 +50,30 @@ router.get('/get', function(req, res, next) {
 /////////////////////////////////////////////////////////////
 router.post('/set', function(req, res, next) {
 
-    console.log("Body: " + JSON.stringify(req.body));
+    //console.log("Body: " + JSON.stringify(req.body));
+    //console.log("Query: " + JSON.stringify(req.query));
+    //console.log("Files: " + JSON.stringify(req.files));
+
+    ///////// Try to get file out /////////
+
+    //if (req.method == 'POST')
+    //{
+    //    var body = '';
+    //    req.on('data', function (data) {
+    //        body += data;
+    //
+    //        // Too much POST data, kill the connection!
+    //        if (body.length > 1e6)
+    //            req.connection.destroy();
+    //    });
+    //    req.on('end', function () {
+    //        var post = qs.parse(body);
+    //
+    //         //use post['blah'], etc.
+    //    });
+    //}
+
+    //////////////////
 
     // Body will look like this
     // senderName=Chenkai&receiverName=Min&emojiId=1&timestamp=1425243022

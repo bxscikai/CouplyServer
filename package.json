@@ -16,7 +16,8 @@
     "serve-favicon": "~2.2.0",
     "underscore": "^1.8.0",
     "q" : "*",
-    "apn" : "*"
+    "apn" : "*",
+    "querystring" : "*",
   },
   "main": "app.js",
   "devDependencies": {},
