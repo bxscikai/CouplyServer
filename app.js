@@ -6,7 +6,6 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
-var path = require('path');
 
 global.appRoot = path.resolve(__dirname);
 
@@ -29,7 +28,6 @@ app.set('view engine', 'hjs');
 //app.use(favicon(__dirname + '/public/favicon.ico'));
 app.use(logger('dev'));
 app.use(bodyParser.json());
-app.use(bodyParser.raw({ type: 'application/vnd.custom-type' }));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -69,5 +67,6 @@ app.use(function(err, req, res, next) {
         error: {}
     });
 });
+
 
 module.exports = app;

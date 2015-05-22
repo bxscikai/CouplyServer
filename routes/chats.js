@@ -4,7 +4,7 @@ var mongoose = require('mongoose');
 var util = require(global.appRoot + '/utils.js');
 var router = express.Router();
 var constant = require(global.appRoot + '/constants.js');
-var qs = require('querystring');
+var formidable = require('formidable');
 
 // Load models
 util.loadModels();
@@ -50,29 +50,6 @@ router.get('/get', function(req, res, next) {
 /////////////////////////////////////////////////////////////
 router.post('/set', function(req, res, next) {
 
-    //console.log("Body: " + JSON.stringify(req.body));
-    //console.log("Query: " + JSON.stringify(req.query));
-    //console.log("Files: " + JSON.stringify(req.files));
-
-    ///////// Try to get file out /////////
-
-    //if (req.method == 'POST')
-    //{
-    //    var body = '';
-    //    req.on('data', function (data) {
-    //        body += data;
-    //
-    //        // Too much POST data, kill the connection!
-    //        if (body.length > 1e6)
-    //            req.connection.destroy();
-    //    });
-    //    req.on('end', function () {
-    //        var post = qs.parse(body);
-    //
-    //         //use post['blah'], etc.
-    //    });
-    //}
-
     //////////////////
 
     // Body will look like this
@@ -81,23 +58,23 @@ router.post('/set', function(req, res, next) {
     if (req.body.senderName == null || req.body.receiverName == null || req.body.timestamp == null || req.body.chatType == null)
     {
         res.send({status: constant.status.error, message : constant.messages.chat_set_missingChatParameter});
-        return;                
+        return;
     }
 
     util.databaseUtil.checkIfUserExists(req.body.senderName, function(user) {
         util.databaseUtil.checkIfUserExists(req.body.receiverName, function(partner){
             // User does not exist, error
-            if (user == null || partner == null) 
+            if (user == null || partner == null)
             {
-                res.send({status: constant.status.error, message : constant.messages.user_setPartner_userOrPartnerDoesNotExist});                           
+                res.send({status: constant.status.error, message : constant.messages.user_setPartner_userOrPartnerDoesNotExist});
             }
             // Sending chat not to your partner, error
-            else if (user.partnerName != req.body.receiverName || partner.partnerName != req.body.senderName) 
+            else if (user.partnerName != req.body.receiverName || partner.partnerName != req.body.senderName)
             {
-                res.send({status: constant.status.error, message : constant.messages.chat_set_cannotChatWithNonPartner});                                           
+                res.send({status: constant.status.error, message : constant.messages.chat_set_cannotChatWithNonPartner});
             }
             // Chat is valid, post chat
-            else 
+            else
             {
                 var chatModel = mongoose.model('chat');
                 var newChat = new chatModel(req.body);
@@ -106,15 +83,15 @@ router.post('/set', function(req, res, next) {
                     else {
                         console.log('Saved : ', data );
                         res.send({status: constant.status.success});
-                    } 
+                    }
                 });
 
                 // Send push notification to your partner
-                if (partner.deviceToken != null) 
+                if (partner.deviceToken != null)
                 {
                     util.sendPushNotification(partner.deviceToken, util.getStringFromEmojiId(req.body.emojiId), {"emojiId" : req.body.emojiId, "timestamp" : req.body.timestamp});
                 }
-                else 
+                else
                 {
                     console.log("Partner does not have deviceToken set, cannot send push notification");
                 }
