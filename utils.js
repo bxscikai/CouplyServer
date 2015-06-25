@@ -1,13 +1,10 @@
 var fs = require('fs');
-var path = require('path');
 var mongoose = require('mongoose');
 var apn = require('apn');
 var constant = require(global.appRoot + '/constants.js');
 var Grid = require('gridfs-stream');
 Grid.mongo = mongoose.mongo;
 var conn = mongoose.connection;
-var streamifier = require('streamifier');
-var gfs = Grid(conn.db);
 
 var util = {
 	loadModels : function() {
@@ -56,7 +53,9 @@ var util = {
 	getStringFromEmojiId : function(emojiId) 
 	{
 		var returnString = "";
-		if (emojiId == 1)
+		if (emojiId == 0)
+			returnString = "New Audio Message"
+		else if (emojiId == 1)
 			returnString = "Frown";
 		else if (emojiId == 2)
 			returnString = "Cooking";
@@ -98,26 +97,30 @@ var util = {
 	,
 	saveFileToDB : function(filePath, fileName, callback)
 	{
-		gfs.db.safe = {w: 1};
+		var gfilestream = Grid(conn.db);
+		gfilestream.db.safe = {w: 1};
 
-		var writestream = gfs.createWriteStream({
+		var writestream = gfilestream.createWriteStream({
 			filename: fileName
 		});
 
 		fs.createReadStream(filePath).pipe(writestream);
 
 		writestream.on('finish', function (file) {
-			console.log(fileName + 'Written To DB');
+			console.log(fileName + ' written To DB');
 			callback();
 		});
 	},
 	readFileFromDB : function(fileName, callback)
 	{
+		var gfilestream = Grid(conn.db);
+		gfilestream.db.safe = {w: 1};
+
 		//write content to file system
 		var fs_write_stream = fs.createWriteStream(constant.database.public_filePath + "/" + fileName);
 
 		//read from mongodb
-		var readstream = gfs.createReadStream({
+		var readstream = gfilestream.createReadStream({
 			filename: fileName
 		});
 		readstream.pipe(fs_write_stream);
@@ -128,8 +131,12 @@ var util = {
 	},
 	fileExists: function(fileName, callback)
 	{
+		console.log("Checking if " + fileName + " exists in DB");
+		var gfilestream = Grid(conn.db);
+		gfilestream.db.safe = {w: 1};
+
 		var options = {filename : fileName}; //can be done via _id as well
-		gfs.exist(options, function (err, found) {
+		gfilestream.exist(options, function (err, found) {
 			if (err) return handleError(err);
 			found ? console.log('File exists') : console.log('File does not exist');
 			callback(found);

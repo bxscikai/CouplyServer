@@ -5,6 +5,7 @@ var util = require(global.appRoot + '/utils.js');
 var router = express.Router();
 var constant = require(global.appRoot + '/constants.js');
 var formidable = require('formidable');
+var fs = require('fs');
 
 // Load models
 util.loadModels();
@@ -21,7 +22,47 @@ router.get('/get', function(req, res, next) {
             if (chats.length > constant.database.maxReturnChat) {
                 chats = chats.slice(chats.length-constant.database.maxReturnChat, chats.length);    
             }
-            res.send({status: constant.status.success, content: chats});
+
+            var numberOfFilesDownloaded = 0;
+            var numberOfRequiredDownloads = 0;
+            chats.forEach(function(chat) {
+                if (chat.emojiId == constant.database.chatAudioId) {
+                    numberOfRequiredDownloads++;
+                }
+            });
+
+            if (numberOfRequiredDownloads == 0)
+            {
+                res.send({status: constant.status.success, content: chats});
+                return;
+            }
+
+            // Download the audio files from MongoDB to local server
+            chats.forEach(function(chat) {
+                if (chat.emojiId == constant.database.chatAudioId)
+                {
+                    if (!fs.existsSync(constant.database.public_filePath + '/' + chat.timestamp.toString()))
+                    {
+                        util.readFileFromDB(chat.timestamp.toString(), function() {
+                            numberOfFilesDownloaded++;
+                            if (numberOfFilesDownloaded == numberOfRequiredDownloads)
+                            {
+                                res.send({status: constant.status.success, content: chats});
+                                return;
+                            }
+                        });
+                    }
+                    else
+                    {
+                        numberOfFilesDownloaded++;
+                        if (numberOfFilesDownloaded == numberOfRequiredDownloads)
+                        {
+                            res.send({status: constant.status.success, content: chats});
+                            return;
+                        }
+                    }
+                }
+            });
         }
 
         // Sent notification
@@ -73,8 +114,11 @@ router.post('/set', function(req, res, next) {
                         }
                         else
                         {
-                            util.readFileFromDB(req.query.timestamp, function(){
-                                res.send({status: constant.status.success});
+                            util.fileExists(req.query.timestamp.toString(),  function(found) {
+                                console.log("File: " + req.query.timestamp.toString() + "Exists: " + found);
+                                util.readFileFromDB(req.query.timestamp.toString(), function () {
+                                    res.send({status: constant.status.success});
+                                });
                             });
                         }
                     });

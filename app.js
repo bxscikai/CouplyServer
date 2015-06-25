@@ -6,12 +6,14 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
+var fs = require('fs')
 
 global.appRoot = path.resolve(__dirname);
 
 // Setup database
 require(global.appRoot+ '/setupDatabase.js')
 
+var constant = require(global.appRoot + '/constants.js');
 var util = require(global.appRoot + '/utils.js');
 var routes = require(global.appRoot + '/routes/index');
 var users = require(global.appRoot + '/routes/users');
@@ -69,5 +71,16 @@ app.use(function(err, req, res, next) {
     });
 });
 
+// Schedule jobs to run
+var minutes = 60, the_interval = minutes * 60 * 1000;
+setInterval(function() {
+
+    // Delete temp files from directory every hour
+    fs.readdirSync(constant.database.public_filePath).forEach(function(fileName) {
+        console.log("Deleting files from public/files directory");
+            fs.unlinkSync(constant.database.public_filePath + "/" + fileName);
+    });
+
+}, the_interval);
 
 module.exports = app;
