@@ -19,7 +19,9 @@ var constant = {
 	database : {
 		db_name : "Couply",
 		rootdb_url : "mongodb://chenkai.cloudapp.net/",
+		public_filePath: __dirname + "/public/files",
 		maxReturnChat : 16,
+		chatAudioId : 0
 	},
 	apns : {
 		passphrase : "pushchat",

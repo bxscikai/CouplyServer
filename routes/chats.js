@@ -1,9 +1,11 @@
+/* global global */
 var express = require('express');
 var mongoose = require('mongoose');
 var util = require(global.appRoot + '/utils.js');
 var router = express.Router();
 var constant = require(global.appRoot + '/constants.js');
-var apn = require('apn');
+var formidable = require('formidable');
+var fs = require('fs');
 
 // Load models
 util.loadModels();
@@ -20,7 +22,47 @@ router.get('/get', function(req, res, next) {
             if (chats.length > constant.database.maxReturnChat) {
                 chats = chats.slice(chats.length-constant.database.maxReturnChat, chats.length);    
             }
-            res.send({status: constant.status.success, content: chats});
+
+            var numberOfFilesDownloaded = 0;
+            var numberOfRequiredDownloads = 0;
+            chats.forEach(function(chat) {
+                if (chat.emojiId == constant.database.chatAudioId) {
+                    numberOfRequiredDownloads++;
+                }
+            });
+
+            if (numberOfRequiredDownloads == 0)
+            {
+                res.send({status: constant.status.success, content: chats});
+                return;
+            }
+
+            // Download the audio files from MongoDB to local server
+            chats.forEach(function(chat) {
+                if (chat.emojiId == constant.database.chatAudioId)
+                {
+                    if (!fs.existsSync(constant.database.public_filePath + '/' + chat.timestamp.toString()))
+                    {
+                        util.readFileFromDB(chat.timestamp.toString(), function() {
+                            numberOfFilesDownloaded++;
+                            if (numberOfFilesDownloaded == numberOfRequiredDownloads)
+                            {
+                                res.send({status: constant.status.success, content: chats});
+                                return;
+                            }
+                        });
+                    }
+                    else
+                    {
+                        numberOfFilesDownloaded++;
+                        if (numberOfFilesDownloaded == numberOfRequiredDownloads)
+                        {
+                            res.send({status: constant.status.success, content: chats});
+                            return;
+                        }
+                    }
+                }
+            });
         }
 
         // Sent notification
@@ -49,54 +91,133 @@ router.get('/get', function(req, res, next) {
 /////////////////////////////////////////////////////////////
 router.post('/set', function(req, res, next) {
 
-    console.log("Body: " + JSON.stringify(req.body));
+    // Perform sanity checks first
+    sanityCheckChat(req, function(error) {
+
+        if (error) {
+            res.send(error);
+            return;
+        }
+
+        if (req.query.emojiId == constant.database.chatAudioId) {
+
+            var form = new formidable.IncomingForm();
+
+            form.parse(req, function (err, fields, files) {
+                util.saveFileToDB(files.file.path, req.query.timestamp.toString(), function() {
+
+                    saveChatWithParams(req.query, function(error) {
+
+                        if (error)
+                        {
+                            res.send(error);
+                        }
+                        else
+                        {
+                            util.fileExists(req.query.timestamp.toString(),  function(found) {
+                                console.log("File: " + req.query.timestamp.toString() + "Exists: " + found);
+                                util.readFileFromDB(req.query.timestamp.toString(), function () {
+                                    res.send({status: constant.status.success});
+                                });
+                            });
+                        }
+                    });
+                });
+            });
+        }
+        else
+        {
+            saveChatWithParams(req.body, function(error) {
+
+                if (error)
+                {
+                    res.send(error);
+                }
+                else
+                {
+                    res.send(200);
+                }
+            });
+        }
+    });
+});
+
+function saveChatWithParams(params, completion)
+{
+    var chatModel = mongoose.model('chat');
+    var newChat = new chatModel(params);
+    newChat.save(function (err, data) {
+
+        if (err) {
+            completion(err);
+            return;
+        }
+        else
+        {
+            // Send push notification to your partner
+            util.databaseUtil.checkIfUserExists(params.receiverName, function (user) {
+
+                if (user.deviceToken != null) {
+                    util.sendPushNotification(user.deviceToken, util.getStringFromEmojiId(newChat.emojiId), {
+                        "emojiId": newChat.emojiId,
+                        "timestamp": newChat.timestamp
+                    });
+                }
+                else {
+                    console.log("Partner does not have deviceToken set, cannot send push notification");
+                }
+                completion();
+            });
+        }
+    });
+}
+
+// Complete will be called with error if error occurred
+function sanityCheckChat(req, completion)
+{
+    var reqParam;
+
+    // Determine where the query parameters are coming from
+    if (req.query.emojiId == constant.database.chatAudioId)
+    {
+        reqParam = req.query;
+    }
+    else
+    {
+        reqParam = req.body;
+    }
 
     // Body will look like this
     // senderName=Chenkai&receiverName=Min&emojiId=1&timestamp=1425243022
     // Ensure parameters are not null
-    if (req.body.senderName == null || req.body.receiverName == null || req.body.emojiId == null || req.body.timestamp == null)
-    {
-        res.send({status: constant.status.error, message : constant.messages.chat_set_missingChatParameter});
-        return;                
+    if (reqParam.senderName == null || reqParam.receiverName == null || reqParam.timestamp == null) {
+        completion({status: constant.status.error, message: constant.messages.chat_set_missingChatParameter});
+        return;
     }
 
-    util.databaseUtil.checkIfUserExists(req.body.senderName, function(user) {
-        util.databaseUtil.checkIfUserExists(req.body.receiverName, function(partner){
+    util.databaseUtil.checkIfUserExists(reqParam.senderName, function (user) {
+        util.databaseUtil.checkIfUserExists(reqParam.receiverName, function (partner) {
             // User does not exist, error
-            if (user == null || partner == null) 
-            {
-                res.send({status: constant.status.error, message : constant.messages.user_setPartner_userOrPartnerDoesNotExist});                           
+            if (user == null || partner == null) {
+                completion({
+                    status: constant.status.error,
+                    message: constant.messages.user_setPartner_userOrPartnerDoesNotExist
+                });
+                return;
             }
             // Sending chat not to your partner, error
-            else if (user.partnerName != req.body.receiverName || partner.partnerName != req.body.senderName) 
-            {
-                res.send({status: constant.status.error, message : constant.messages.chat_set_cannotChatWithNonPartner});                                           
-            }
-            // Chat is valid, post chat
-            else 
-            {
-                var chatModel = mongoose.model('chat');
-                var newChat = new chatModel(req.body);
-                newChat.save(function (err, data) {
-                    if (err) console.log(err);
-                    else {
-                        console.log('Saved : ', data );
-                        res.send({status: constant.status.success});
-                    } 
+            else if (user.partnerName != reqParam.receiverName || partner.partnerName != reqParam.senderName) {
+                completion({
+                    status: constant.status.error,
+                    message: constant.messages.chat_set_cannotChatWithNonPartner
                 });
-
-                // Send push notification to your partner
-                if (partner.deviceToken != null) 
-                {
-                    util.sendPushNotification(partner.deviceToken, util.getStringFromEmojiId(req.body.emojiId), {"emojiId" : req.body.emojiId, "timestamp" : req.body.timestamp});
-                }
-                else 
-                {
-                    console.log("Partner does not have deviceToken set, cannot send push notification");
-                }
+                return;
             }
+
+            // Success
+            completion();
         });
     });
-});
+}
 
 module.exports = router;

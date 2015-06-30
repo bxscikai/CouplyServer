@@ -18,15 +18,24 @@ router.get('/get', function(req, res, next) {
         if (users.length==0) 
         {
         	// If the user doesn't exist, create the user
-        	var newUser = new userModel({ username : req.query.username, deviceToken: req.query.deviceToken});
-        	newUser.save(function (err, data) {
-				if (err) console.log(err);
-				else console.log('Saved : ', data );
-        	});
-        	res.send({status: constant.status.success,
-        			  message: constant.messages.user_get_newUserCreated,
-        			  content: newUser
-        			 });   	
+			if (req.query.createNew == "true") {
+				var newUser = new userModel({username: req.query.username, deviceToken: req.query.deviceToken});
+				newUser.save(function (err, data) {
+					if (err) console.log(err);
+					else console.log('Saved : ', data);
+				});
+				res.send({
+					status: constant.status.success,
+					message: constant.messages.user_get_newUserCreated,
+					content: newUser
+				});
+			}
+			else
+			{
+				res.send({
+					status: constant.status.success
+				});
+			}
         }
         else
         {

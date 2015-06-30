@@ -1,8 +1,10 @@
 var fs = require('fs');
-var path = require('path');
 var mongoose = require('mongoose');
 var apn = require('apn');
 var constant = require(global.appRoot + '/constants.js');
+var Grid = require('gridfs-stream');
+Grid.mongo = mongoose.mongo;
+var conn = mongoose.connection;
 
 var util = {
 	loadModels : function() {
@@ -51,7 +53,9 @@ var util = {
 	getStringFromEmojiId : function(emojiId) 
 	{
 		var returnString = "";
-		if (emojiId == 1)
+		if (emojiId == 0)
+			returnString = "New Audio Message"
+		else if (emojiId == 1)
 			returnString = "Frown";
 		else if (emojiId == 2)
 			returnString = "Cooking";
@@ -89,6 +93,54 @@ var util = {
 			returnString = "Unknown";
 
 		return "[" + returnString + "]";
+	}
+	,
+	saveFileToDB : function(filePath, fileName, callback)
+	{
+		var gfilestream = Grid(conn.db);
+		gfilestream.db.safe = {w: 1};
+
+		var writestream = gfilestream.createWriteStream({
+			filename: fileName
+		});
+
+		fs.createReadStream(filePath).pipe(writestream);
+
+		writestream.on('finish', function (file) {
+			console.log(fileName + ' written To DB');
+			callback();
+		});
+	},
+	readFileFromDB : function(fileName, callback)
+	{
+		var gfilestream = Grid(conn.db);
+		gfilestream.db.safe = {w: 1};
+
+		//write content to file system
+		var fs_write_stream = fs.createWriteStream(constant.database.public_filePath + "/" + fileName);
+
+		//read from mongodb
+		var readstream = gfilestream.createReadStream({
+			filename: fileName
+		});
+		readstream.pipe(fs_write_stream);
+		fs_write_stream.on('close', function () {
+			console.log('file has been written fully!');
+			callback(fs_write_stream);
+		});
+	},
+	fileExists: function(fileName, callback)
+	{
+		console.log("Checking if " + fileName + " exists in DB");
+		var gfilestream = Grid(conn.db);
+		gfilestream.db.safe = {w: 1};
+
+		var options = {filename : fileName}; //can be done via _id as well
+		gfilestream.exist(options, function (err, found) {
+			if (err) return handleError(err);
+			found ? console.log('File exists') : console.log('File does not exist');
+			callback(found);
+		});
 	}
 };
 
