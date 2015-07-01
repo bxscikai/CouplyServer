@@ -56,6 +56,39 @@ router.get('/get', function(req, res, next) {
 });
 
 /* SET user partner */
+// [SERVER]/users/patchDeviceToken?username=Chenkai&deviceToken=<deviceToken>
+router.get('/patchDeviceToken', function(req, res, next) {
+
+	// Check that the user and the partner exists
+	util.databaseUtil.checkIfUserExists(req.query.username, function(user) {
+
+			// Either user doesn't exist, return error
+		if (user ==null )
+		{
+			res.send({status: constant.status.error,
+				message: constant.messages.user_setPartner_userOrPartnerDoesNotExist
+			});
+		}
+		else
+		{
+			mongoose.model('user').findOneAndUpdate(/* Find Query */   {username: req.query.username},
+				/* Update Query */ {deviceToken: req.query.deviceToken},
+				function(err) {
+					if (err != null)
+					{
+						res.send({status: constant.status.error,
+							message : err});
+					}
+					else
+					{
+						res.send({status: constant.status.success});
+					}
+				});
+		}
+	});
+});
+
+/* SET user partner */
 // [SERVER]/users/setPartner?username=Chenkai&partnerName=Min
 router.get('/setPartner', function(req, res, next) {
 	
