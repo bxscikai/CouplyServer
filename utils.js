@@ -125,7 +125,7 @@ var util = {
 		});
 		readstream.pipe(fs_write_stream);
 		fs_write_stream.on('close', function () {
-			console.log('file has been written fully!');
+			console.log('File: ' + fileName + ' has been written fully!');
 			callback(fs_write_stream);
 		});
 	},

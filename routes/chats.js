@@ -115,7 +115,7 @@ router.post('/set', function(req, res, next) {
                         else
                         {
                             util.fileExists(req.query.timestamp.toString(),  function(found) {
-                                console.log("File: " + req.query.timestamp.toString() + "Exists: " + found);
+                                console.log("File: " + req.query.timestamp.toString() + " Exists: " + found);
                                 util.readFileFromDB(req.query.timestamp.toString(), function () {
                                     res.send({status: constant.status.success});
                                 });
