@@ -135,7 +135,7 @@ router.post('/set', function(req, res, next) {
                 }
                 else
                 {
-                    res.send(200);
+                    res.send({status: constant.status.success});
                 }
             });
         }
